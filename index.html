@@ -25,7 +25,7 @@ body{font-size:12px;min-width:0}
 .btn{background:#10c2c7;border:2px solid #148e93;height:29px;min-width:82px;padding:2px 13px;font-family:Tahoma;font-weight:bold;font-size:12px;cursor:pointer}
 .btn:active{transform:translateY(1px)}
 .listpanel{border:1px solid #aaa;margin-top:17px;padding:0 7px 8px;position:relative}
-.listlegend{position:absolute;right:8px;top:-10px;background:#fff;padding:0 5px;font-weight:bold}
+.listlegend{position:absolute;right:8px;top:-14px;background:#fff;padding:0 5px;font-weight:bold;line-height:14px;z-index:2}
 .count{text-align:center;font-weight:bold;margin:17px 0 5px}
 .tablewrap{width:100%;overflow:hidden}
 table{border-collapse:collapse;width:100%;table-layout:fixed;direction:rtl;font-size:8.8px}
@@ -73,7 +73,7 @@ tbody tr:nth-child(even) td{background:#fff}
 .col-mobile{width:9%} .col-valid{width:7.5%} .col-city{width:6%}
 .col-initial{width:7.5%} .col-used{width:7.5%} .col-remain{width:7.5%}
 .col-sent-s{width:5.5%} .col-sent-d{width:5.5%} .col-noid{width:7%}
-.pager{height:29px;background:#2e68bb;color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:bold;font-size:13px;direction:ltr}
+.pager{height:29px;background:#2e68bb;color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:bold;font-size:13px;direction:rtl;flex-direction:row}
 .pager button{background:none;border:0;color:#fff;text-decoration:underline;font-family:Tahoma;font-weight:bold;cursor:pointer;padding:1px 3px}
 .pager button.active{text-decoration:none;background:#fff;color:#2e68bb}
 .admin{display:none;border:1px solid #aaa;margin-top:12px;padding:10px}
@@ -331,6 +331,7 @@ function applyFilters(){
     return true;
   });
   page=1; render();
+  if(document.getElementById('admin')?.style.display==='block') refreshAdminPeople(getAdminTargetIndex());
 }
 
 function toFaDigits(v){
@@ -404,6 +405,17 @@ function render() {
 }
 function go(p) { page=p; render(); window.scrollTo({top:document.querySelector('.listpanel').offsetTop-5,behavior:'smooth'}); }
 const ADMIN_PASSWORD_HASH = '5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5';
+function getAdminTargetIndex(){
+  const q=normalizeFa(appliedName || document.getElementById('name').value);
+  if(!q) return null;
+  if(filtered.length===1){
+    const idx=data.indexOf(filtered[0]);
+    if(idx>=0) return idx;
+  }
+  let idx=data.findIndex(r=>normalizeFa(r[1])===q);
+  if(idx<0) idx=data.findIndex(r=>normalizeFa(r[1]).includes(q));
+  return idx>=0 ? idx : null;
+}
 function toggleAdmin() {
   const x=document.getElementById('admin');
   if(x.style.display==='block'){ x.style.display='none'; return; }
@@ -419,7 +431,7 @@ async function checkAdminPassword(){
   if(hash===ADMIN_PASSWORD_HASH){
     document.getElementById('adminLogin').style.display='none';
     document.getElementById('admin').style.display='block';
-    refreshAdminPeople();
+    refreshAdminPeople(getAdminTargetIndex());
   }else{ alert('رمز عبور نادرست است.'); document.getElementById('adminPassword').select(); }
 }
 function closeAdminLogin(){document.getElementById('adminLogin').style.display='none';}
@@ -448,7 +460,7 @@ function fillEditForm(r){
 function refreshAdminPeople(selectedId){
   const sel=document.getElementById('aPerson');
   if(!sel) return;
-  const old=selectedId!=null ? String(selectedId) : String(sel.value||'');
+  const old=selectedId!==undefined && selectedId!==null ? String(selectedId) : String(sel.value||'');
   sel.innerHTML=data.map((r,i)=>`<option value="${i}">${esc(r[1])} — ${esc(r[2])}</option>`).join('');
   if(data.length){
     const idx=(old!=='' && data[Number(old)]) ? Number(old) : 0;
