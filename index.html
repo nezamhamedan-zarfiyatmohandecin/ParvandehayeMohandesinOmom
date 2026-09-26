@@ -73,7 +73,7 @@ tbody tr:nth-child(even) td{background:#fff}
 .col-mobile{width:9%} .col-valid{width:7.5%} .col-city{width:6%}
 .col-initial{width:7.5%} .col-used{width:7.5%} .col-remain{width:7.5%}
 .col-sent-s{width:5.5%} .col-sent-d{width:5.5%} .col-noid{width:7%}
-.pager{height:29px;background:#2e68bb;color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:bold;font-size:13px;direction:rtl}
+.pager{height:29px;background:#2e68bb;color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:bold;font-size:13px;direction:ltr}
 .pager button{background:none;border:0;color:#fff;text-decoration:underline;font-family:Tahoma;font-weight:bold;cursor:pointer;padding:1px 3px}
 .pager button.active{text-decoration:none;background:#fff;color:#2e68bb}
 .admin{display:none;border:1px solid #aaa;margin-top:12px;padding:10px}
@@ -205,10 +205,10 @@ tbody tr:nth-child(even) td{background:#fff}
             <th class="col-mobile">موبایل</th>
             <th class="col-valid">اعتبار پروانه</th>
             <th class="col-city">شهر<br>سهمیه اصلی</th>
+            <th class="col-sent-s">شعبه<br>مهمان</th>
             <th class="col-initial">سهمیه<br>اولیه</th>
             <th class="col-used">سهمیه<br>استفاده<br>شده</th>
             <th class="col-remain">سهمیه<br>باقیمانده</th>
-            <th class="col-sent-s">شعبه<br>مهمان</th>
             <th class="col-sent-d">تعدادکار نظارت<br>که شناسنامه<br>دریافت نکرده‌اند</th>
             <th class="col-noid">تعدادکار<br>نظارت<br>ارسال</th>
           </tr>
@@ -331,8 +331,6 @@ function applyFilters(){
     return true;
   });
   page=1; render();
-  // اگر مدیریت باز باشد، همان نامی که در جستجوی اصلی وارد شده نیز در مدیریت انتخاب شود.
-  if(document.getElementById('admin').style.display==='block') refreshAdminPeopleBySearch();
 }
 
 function toFaDigits(v){
@@ -380,7 +378,7 @@ function render() {
   const start=(page-1)*10, rows=filtered.slice(start,start+10);
   const tb=document.getElementById('tbody');
   tb.innerHTML=rows.map((r,i)=>`<tr>
-    <td class="num">${start+i+1}</td>
+    <td class="num">${esc(r[0])}</td>
     <td class="name">${esc(r[1])}</td>
     <td>${esc(r[2])}</td>
     <td>${esc(r[3])}</td>
@@ -391,10 +389,10 @@ function render() {
     <td class="num">${esc(r[9])}</td>
     <td class="num">${esc(r[10])}</td>
     <td>${esc(r[11])}</td>
+    <td>${esc(normalizeGuestBranchValue(r[15]))}</td>
     <td class="num">${fmt(r[12])}</td>
     <td class="num">${fmt(r[13])}</td>
     <td class="num">${fmt(r[14])}</td>
-    <td>${esc(normalizeGuestBranchValue(r[15]))}</td>
     <td class="num">${fmt(r[17])}</td>
     <td class="num">${fmt(r[16])}</td>
   </tr>`).join('');
@@ -421,7 +419,7 @@ async function checkAdminPassword(){
   if(hash===ADMIN_PASSWORD_HASH){
     document.getElementById('adminLogin').style.display='none';
     document.getElementById('admin').style.display='block';
-    refreshAdminPeopleBySearch();
+    refreshAdminPeople();
   }else{ alert('رمز عبور نادرست است.'); document.getElementById('adminPassword').select(); }
 }
 function closeAdminLogin(){document.getElementById('adminLogin').style.display='none';}
@@ -452,30 +450,11 @@ function refreshAdminPeople(selectedId){
   if(!sel) return;
   const old=selectedId!=null ? String(selectedId) : String(sel.value||'');
   sel.innerHTML=data.map((r,i)=>`<option value="${i}">${esc(r[1])} — ${esc(r[2])}</option>`).join('');
-  if(!data.length) return;
-
-  let idx=-1;
-  // اولویت با نامی است که کاربر در جستجوی اصلی وارد کرده است.
-  const q=normalizeFa(appliedName || document.getElementById('name').value || '');
-  if(q){
-    idx=data.findIndex(r=>normalizeFa(r[1])===q);
-    if(idx<0) idx=data.findIndex(r=>normalizeFa(r[1]).includes(q));
+  if(data.length){
+    const idx=(old!=='' && data[Number(old)]) ? Number(old) : 0;
+    sel.value=String(idx); fillEditForm(data[idx]);
   }
-  if(idx<0 && old!=='' && data[Number(old)]) idx=Number(old);
-  if(idx<0) idx=0;
-  sel.value=String(idx);
-  fillEditForm(data[idx]);
 }
-function refreshAdminPeopleBySearch(){
-  const q=normalizeFa(appliedName || document.getElementById('name').value || '');
-  if(!q){ refreshAdminPeople(); return; }
-  const idx=data.findIndex(r=>normalizeFa(r[1])===q) >= 0
-    ? data.findIndex(r=>normalizeFa(r[1])===q)
-    : data.findIndex(r=>normalizeFa(r[1]).includes(q));
-  if(idx>=0) refreshAdminPeople(idx);
-  else refreshAdminPeople();
-}
-
 function loadEngineerForEdit(){
   const i=Number(document.getElementById('aPerson').value);
   if(data[i]) fillEditForm(data[i]);
@@ -491,7 +470,6 @@ function saveEngineerEdit(){
   r[16]=numVal('aSent'); r[17]=numVal('aNoId');
   localStorage.setItem('hamadan_engineers_v3',JSON.stringify(data));
   refreshAdminPeople(i); applyFilters();
-  refreshAdminPeople(i);
   alert('اطلاعات مهندس با موفقیت ویرایش و ذخیره شد.');
 }
 function clearEngineerForm(){
